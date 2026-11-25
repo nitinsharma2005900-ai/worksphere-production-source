@@ -1,0 +1,160 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "WorkSphere Core API",
+    "version": "1.0.0",
+    "description": "Multi-Tenant Project Management & Workflow Automation REST API.\n\nAll endpoints require a valid tenant context via JWT or `X-Organization-ID` header. Optimistic locking is enforced on task updates via the `version` field."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000/api/v1",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "OrgHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Organization-ID",
+        "description": "Tenant Organization ID"
+      }
+    },
+    "schemas": {
+      "StandardResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "type": "object" },
+          "requestId": { "type": "string" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "example": "STALE_OBJECT_STATE" },
+              "message": { "type": "string", "example": "Optimistic lock failure" }
+            }
+          },
+          "requestId": { "type": "string" }
+        }
+      }
+    }
+  },
+  "security": [
+    { "BearerAuth": [] },
+    { "OrgHeader": [] }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user and initialize tenant organization",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "name"],
+                "properties": {
+                  "email": { "type": "string", "example": "user@company.com" },
+                  "password": { "type": "string", "example": "SecurePass123!" },
+                  "name": { "type": "string", "example": "Jane Doe" },
+                  "organizationName": { "type": "string", "example": "Acme Corp" },
+                  "invitationToken": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User and organization successfully registered" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Authenticate user and issue JWT access and refresh tokens",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "example": "owner@acme.com" },
+                  "password": { "type": "string", "example": "Password123!" },
+                  "organizationId": { "type": "string", "example": "org-acme-101" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authenticated tokens returned" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/tasks": {
+      "get": {
+        "summary": "List tenant tasks with optional filters",
+        "tags": ["Tasks"],
+        "parameters": [
+          { "name": "projectId", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "priority", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Filtered task list" } }
+      },
+      "post": {
+        "summary": "Create a task in project with optimistic lock version 1",
+        "tags": ["Tasks"],
+        "responses": { "201": { "description": "Task created" } }
+      }
+    },
+    "/tasks/{id}": {
+      "patch": {
+        "summary": "Update task with Optimistic Concurrency Control (version)",
+        "description": "Client passes `version`. If server version !== client version, returns 409 Conflict with current server state.",
+        "tags": ["Tasks"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "status": { "type": "string", "enum": ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "BLOCKED"] },
+                  "version": { "type": "integer", "description": "Expected task version for optimistic locking", "example": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Task updated and version incremented" },
+          "409": { "description": "Optimistic concurrency conflict" }
+        }
+      }
+    }
+  }
+}

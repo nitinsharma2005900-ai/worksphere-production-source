@@ -1,0 +1,17 @@
+# WorkSphere Code Ownership & Review Routing
+* @worksphere-core-team
+
+# Backend API & Database
+/backend/ @worksphere-core-team
+/database/ @worksphere-core-team
+
+# Analytics & Streaming Microservice
+/analytics-service/ @worksphere-core-team
+
+# Frontend Next.js Architecture
+/frontend/ @worksphere-core-team
+
+# DevOps & CI/CD Pipelines
+/.github/ @worksphere-core-team
+/infrastructure/ @worksphere-core-team
+docker-compose.yml @worksphere-core-team

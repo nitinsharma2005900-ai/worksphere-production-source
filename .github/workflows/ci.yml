@@ -1,0 +1,94 @@
+name: WorkSphere CI/CD Quality & Security Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-checks:
+    name: Node.js Backend Tests & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Generate Prisma Client
+        run: |
+          cd backend
+          npx prisma generate
+
+      - name: Run Backend Tests
+        run: |
+          cd backend
+          npm test
+
+      - name: Build Backend TypeScript
+        run: |
+          cd backend
+          npm run build
+
+  analytics-checks:
+    name: Python FastAPI Analytics Tests & Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          cd analytics-service
+          pip install -r requirements.txt
+
+      - name: Run Pytest Suite
+        run: |
+          cd analytics-service
+          pytest -v
+
+      - name: Run Memory & Streaming Benchmark
+        run: |
+          cd analytics-service
+          python processors/benchmark.py
+
+  frontend-checks:
+    name: Next.js Frontend Build & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Next.js Production Bundle
+        run: |
+          cd frontend
+          npm run build

@@ -1,0 +1,115 @@
+{
+  "info": {
+    "name": "WorkSphere Multi-Tenant SaaS API",
+    "_postman_id": "worksphere-v1-collection-2026",
+    "description": "Complete Postman collection for WorkSphere Core API, featuring Auth, Organizations, Tasks with Optimistic Concurrency, and Python Analytics.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api/v1", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "orgId", "value": "org-acme-101", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login - Acme Owner",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@acme.com\",\n  \"password\": \"Password123!\",\n  \"organizationId\": \"org-acme-101\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login - Platform Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@worksphere.io\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Register New Organization",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sarah Connor\",\n  \"email\": \"sarah@cyberdyne.com\",\n  \"password\": \"SecurePass123!\",\n  \"organizationName\": \"Cyberdyne Systems\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks (Concurrency Control)",
+      "item": [
+        {
+          "name": "List Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-Organization-ID", "value": "{{orgId}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/tasks", "host": ["{{baseUrl}}"], "path": ["tasks"] }
+          }
+        },
+        {
+          "name": "Update Task with Optimistic Locking",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-Organization-ID", "value": "{{orgId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Task Title\",\n  \"status\": \"IN_PROGRESS\",\n  \"version\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/tasks/tsk-acme-001", "host": ["{{baseUrl}}"], "path": ["tasks", "tsk-acme-001"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "FastAPI Analytics Integration",
+      "item": [
+        {
+          "name": "Project Health Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-Organization-ID", "value": "{{orgId}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/analytics/project-health/proj-acme-cloud", "host": ["{{baseUrl}}"], "path": ["analytics", "project-health", "proj-acme-cloud"] }
+          }
+        },
+        {
+          "name": "Team Workload Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-Organization-ID", "value": "{{orgId}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/analytics/workload", "host": ["{{baseUrl}}"], "path": ["analytics", "workload"] }
+          }
+        }
+      ]
+    }
+  ]
+}

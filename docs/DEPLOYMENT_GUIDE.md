@@ -1,0 +1,59 @@
+# WorkSphere – Production Cloud Deployment Guide
+
+## 1. Cloud Architecture Overview
+WorkSphere is designed for deployment to any modern cloud infrastructure (AWS EC2, DigitalOcean Droplet, GCP Compute Engine, or Azure Linux VM) behind an Nginx reverse proxy with TLS/HTTPS.
+
+---
+
+## 2. Infrastructure Deployment Steps
+
+### Step 1: Provision Host VM & Install Runtimes
+```bash
+sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2 certbot python3-certbot-nginx
+sudo usermod -aG docker $USER
+```
+
+### Step 2: Configure Production Environment Variables
+Create `/opt/worksphere/.env`:
+```env
+NODE_ENV=production
+PORT=4000
+DATABASE_URL=postgresql://worksphere:STRONG_GENERATED_PASSWORD@postgres:5432/worksphere_db?schema=public
+JWT_ACCESS_SECRET=STRONG_RANDOM_ACCESS_SECRET_MIN_32_CHARACTERS
+JWT_REFRESH_SECRET=STRONG_RANDOM_REFRESH_SECRET_MIN_32_CHARACTERS
+ANALYTICS_INTERNAL_API_KEY=STRONG_INTERNAL_SERVICE_KEY
+STORAGE_MODE=s3
+S3_ENDPOINT=https://s3.amazonaws.com
+S3_BUCKET=worksphere-production-attachments
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=re_live_api_key
+```
+
+### Step 3: SSL / HTTPS Configuration
+Obtain free TLS certificates using Let's Encrypt:
+```bash
+sudo certbot certonly --standalone -d app.yourdomain.com
+```
+
+### Step 4: Launch Services with Docker Compose
+```bash
+docker compose -f docker-compose.yml up -d --build
+```
+
+### Step 5: Automated Daily Backups
+Configure a daily cron job to run `infrastructure/scripts/backup.sh` at 02:00 AM UTC:
+```bash
+crontab -e
+# Add line:
+0 2 * * * /opt/worksphere/infrastructure/scripts/backup.sh >> /var/log/worksphere_backup.log 2>&1
+```
+
+---
+
+## 3. Disaster Recovery & Restoration Verification
+To test and verify a database restore without impacting production:
+```bash
+chmod +x infrastructure/scripts/restore.sh
+./infrastructure/scripts/restore.sh /var/backups/worksphere/worksphere_db_YYYYMMDD_HHMMSS.sql.gz worksphere_restore_verification
+```
+The script validates schema structure, indexes, and row count matches.
