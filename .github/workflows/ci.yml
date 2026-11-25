@@ -67,7 +67,7 @@ jobs:
       - name: Run Memory & Streaming Benchmark
         run: |
           cd analytics-service
-          python processors/benchmark.py
+          python -m processors.benchmark
 
   frontend-checks:
     name: Next.js Frontend Build & Typecheck

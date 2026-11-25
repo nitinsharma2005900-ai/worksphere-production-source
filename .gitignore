@@ -39,7 +39,7 @@ pnpm-debug.log*
 
 # Runtime data & uploads
 uploads/
-storage/
+/storage/
 *.sqlite
 *.sqlite-journal
 
