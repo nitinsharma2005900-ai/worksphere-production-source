@@ -5,7 +5,7 @@ WorkSphere is designed for deployment to any modern cloud infrastructure (AWS EC
 
 ## Render Demo Deployment
 
-The repository includes a `render.yaml` Blueprint for the frontend, backend, and analytics service. To deploy the demo, connect the private GitHub repository to Render and create a Blueprint from `render.yaml`. The Blueprint generates JWT and analytics service secrets; do not replace them with committed values.
+The repository includes a `render.yaml` Blueprint for the frontend, backend, and analytics service. To deploy the demo, connect the public GitHub repository to Render and create a Blueprint from `render.yaml`. Anyone can view or clone the source at https://github.com/nitinsharma2005900-ai/worksphere-production-source without a repository invitation. The Blueprint generates JWT and analytics service secrets; do not replace them with committed values.
 
 The current backend stores application data in process memory. Seeded demo accounts load on startup, but projects and other changes made after startup can be lost when a free Render service sleeps or restarts. This setup is for preview/demo use only, not durable production data. PostgreSQL is not yet wired into the runtime data store.
 

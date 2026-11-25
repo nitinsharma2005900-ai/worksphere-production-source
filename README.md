@@ -11,6 +11,16 @@
 
 ---
 
+## Public Repository
+
+Anyone can view and clone the project source without a GitHub repository invitation:
+
+```bash
+git clone https://github.com/nitinsharma2005900-ai/worksphere-production-source.git
+```
+
+[Download the 10-page project documentation](docs/WorkSphere_Project_Documentation.pdf).
+
 ## 🌟 Key Platform Highlights
 - **Multi-Tenant Isolation**: Tenant A (Acme Corp) can never access Tenant B's (Globex Industries) records. Enforced at JWT, middleware, and database layers.
 - **5 Granular Roles**: Platform Admin, Organization Owner, Project Manager, Team Member, and Auditor (Strictly read-only).
