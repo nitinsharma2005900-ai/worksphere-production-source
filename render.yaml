@@ -19,7 +19,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm ci && npm run build:backend
+    buildCommand: npm ci --include=dev && npm run build:backend
     startCommand: npm run start --workspace backend
     healthCheckPath: /health
     envVars:
@@ -53,7 +53,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm ci && npm run build:frontend
+    buildCommand: npm ci --include=dev && npm run build:frontend
     startCommand: npm run start --workspace frontend
     healthCheckPath: /
     envVars:
