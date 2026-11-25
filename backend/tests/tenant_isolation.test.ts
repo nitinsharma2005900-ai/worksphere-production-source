@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { seedDatabase } from '../src/database/seed';
+import { resolveSocketOrganization } from '../src/realtime/socket';
 
 const app = createApp();
 
@@ -64,5 +65,17 @@ describe('Assessment 03 & 04 - Multi-Tenant Isolation Enforcement', () => {
     const keys = res.body.data.map((p: any) => p.key);
     expect(keys).toContain('CLM'); // Acme project
     expect(keys).not.toContain('VLC'); // Globex secret project must NOT be present
+  });
+
+  it('does not trust a non-admin Socket.IO organization supplied by the client', () => {
+    expect(() => resolveSocketOrganization(
+      { currentOrgId: 'org-acme-101', isPlatformAdmin: false },
+      'org-globex-202'
+    )).toThrow('Cross-tenant organization access denied');
+
+    expect(resolveSocketOrganization(
+      { currentOrgId: 'org-acme-101', isPlatformAdmin: false },
+      'org-acme-101'
+    )).toBe('org-acme-101');
   });
 });

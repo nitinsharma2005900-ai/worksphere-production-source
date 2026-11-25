@@ -141,10 +141,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": ["version"],
                 "properties": {
                   "title": { "type": "string" },
                   "status": { "type": "string", "enum": ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "BLOCKED"] },
-                  "version": { "type": "integer", "description": "Expected task version for optimistic locking", "example": 1 }
+                  "version": { "type": "integer", "minimum": 1, "description": "Required expected task version for optimistic locking", "example": 1 }
                 }
               }
             }

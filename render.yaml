@@ -13,6 +13,8 @@ services:
         value: production
       - key: INTERNAL_API_KEY
         generateValue: true
+      - key: CORS_ORIGINS
+        value: https://worksphere-web-nitinsharma.onrender.com
 
   - type: web
     name: worksphere-production-api-nitinsharma

@@ -28,12 +28,20 @@ DATABASE_URL=postgresql://worksphere:STRONG_GENERATED_PASSWORD@postgres:5432/wor
 JWT_ACCESS_SECRET=STRONG_RANDOM_ACCESS_SECRET_MIN_32_CHARACTERS
 JWT_REFRESH_SECRET=STRONG_RANDOM_REFRESH_SECRET_MIN_32_CHARACTERS
 ANALYTICS_INTERNAL_API_KEY=STRONG_INTERNAL_SERVICE_KEY
+POSTGRES_USER=worksphere
+POSTGRES_PASSWORD=STRONG_DATABASE_PASSWORD
+POSTGRES_DB=worksphere_db
+MINIO_ROOT_USER=STRONG_MINIO_USER
+MINIO_ROOT_PASSWORD=STRONG_MINIO_PASSWORD
+CORS_ORIGIN=https://app.yourdomain.com
 STORAGE_MODE=s3
 S3_ENDPOINT=https://s3.amazonaws.com
 S3_BUCKET=worksphere-production-attachments
 EMAIL_PROVIDER=resend
 RESEND_API_KEY=re_live_api_key
 ```
+
+The `docker-compose.yml` file deliberately requires the database, object-storage, JWT, and internal-service secrets above; it no longer contains production-style credential values. Keep this environment file outside version control.
 
 ### Step 3: SSL / HTTPS Configuration
 Obtain free TLS certificates using Let's Encrypt:

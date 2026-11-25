@@ -3,7 +3,7 @@ import { createApp } from './app';
 import { setupSocketServer } from './realtime/socket';
 import { env } from './config/env';
 import { logger } from './config/logger';
-import './database/seed'; // Ensure database fixtures are seeded on boot
+import { seedDatabase } from './database/seed';
 
 const app = createApp();
 const server = http.createServer(app);
@@ -11,13 +11,16 @@ const server = http.createServer(app);
 // Setup Socket.IO Server
 setupSocketServer(server);
 
-server.listen(env.PORT, () => {
+seedDatabase().then(() => server.listen(env.PORT, () => {
   logger.info(`=======================================================`);
   logger.info(`🚀 WorkSphere Backend API is listening on port ${env.PORT}`);
   logger.info(`📖 Swagger Documentation: http://localhost:${env.PORT}/api-docs`);
   logger.info(`🔌 Real-Time Socket.IO Server active on port ${env.PORT}`);
   logger.info(`🌍 Environment: ${env.NODE_ENV}`);
   logger.info(`=======================================================`);
+})).catch(err => {
+  logger.error({ err }, 'Unable to initialize application data');
+  process.exit(1);
 });
 
 const handleShutdown = (signal: string) => {

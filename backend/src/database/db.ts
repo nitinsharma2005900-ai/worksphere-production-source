@@ -208,6 +208,7 @@ export interface DBRefreshToken {
   id: string;
   userId: string;
   tokenHash: string;
+  tokenId: string;
   family: string;
   expiresAt: string;
   revokedAt?: string | null;

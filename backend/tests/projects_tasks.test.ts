@@ -82,6 +82,17 @@ describe('Assessment 02 - Projects, Tasks, Comments & Analytics API', () => {
     expect(res.body.data.health_status).toBeDefined();
   });
 
+  it('rejects a task update without the version required for optimistic locking', async () => {
+    const res = await request(app)
+      .patch('/api/v1/tasks/tsk-acme-001')
+      .set('Authorization', `Bearer ${devToken}`)
+      .set('X-Organization-ID', 'org-acme-101')
+      .send({ status: 'DONE' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   it('queues an organization-scoped analytics email report', async () => {
     const res = await request(app)
       .post('/api/v1/analytics/report/email')

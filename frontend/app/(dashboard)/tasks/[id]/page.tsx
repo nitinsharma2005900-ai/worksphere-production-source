@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/authContext';
-import { apiClient } from '@/lib/api';
+import { API_BASE_URL, apiClient } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import {
   ArrowLeft,
@@ -138,7 +138,7 @@ export default function TaskDetailPage() {
         method: 'POST',
         body: JSON.stringify({ content: newComment })
       });
-      setComments(prev => [created, ...prev]);
+      setComments(prev => [created, ...prev.filter(comment => comment.id !== created.id)]);
       setNewComment('');
     } catch (err: any) {
       alert(err.message);
@@ -177,6 +177,26 @@ export default function TaskDetailPage() {
       alert('Upload error: ' + err.message);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDownload = async (attachment: any) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/attachments/download/${encodeURIComponent(attachment.storageKey)}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('worksphere_token')}`,
+          'X-Organization-ID': currentOrgId || ''
+        }
+      });
+      if (!response.ok) throw new Error('Unable to download attachment. Please sign in again if your session expired.');
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.fileName;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err: any) {
+      alert(err.message || 'Download failed');
     }
   };
 
@@ -339,17 +359,16 @@ export default function TaskDetailPage() {
                 <div className="text-xs text-slate-400 text-center py-4">No attachments uploaded.</div>
               ) : (
                 attachments.map(att => (
-                  <a
+                  <button
+                    type="button"
                     key={att.id}
-                    href={att.storageUrl}
-                    target="_blank"
-                    rel="noreferrer"
+                    onClick={() => handleDownload(att)}
                     className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 hover:bg-slate-50 text-xs text-slate-700"
                   >
                     <FileText className="h-4 w-4 text-slate-400" />
                     <span className="truncate flex-1 font-medium">{att.fileName}</span>
                     <span className="text-[10px] text-slate-400">{(att.fileSize / 1024).toFixed(1)} KB</span>
-                  </a>
+                  </button>
                 ))
               )}
             </div>

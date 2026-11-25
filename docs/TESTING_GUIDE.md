@@ -69,7 +69,7 @@ PASS tests/concurrency_capstone.test.ts
     √ Capstone: Background job retries do NOT dispatch duplicate notifications (283 ms)
 
 Test Suites: 4 passed, 4 total
-Tests:       11 passed, 11 total
+Tests:       22 passed, 22 total
 Snapshots:   0 total
 Time:        14.828 s
 Ran all test suites.

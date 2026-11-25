@@ -59,3 +59,34 @@ export const env = parsed.data;
 if (env.EMAIL_PROVIDER === 'resend' && !env.RESEND_API_KEY) {
   throw new Error('RESEND_API_KEY is required when EMAIL_PROVIDER=resend');
 }
+
+/**
+ * Browser origins that may call the API or establish a Socket.IO connection.
+ * Multiple origins are supported as a comma-separated CORS_ORIGIN value so a
+ * staging deployment can be added without falling back to a wildcard.
+ */
+export const allowedCorsOrigins = env.CORS_ORIGIN.split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+export const isAllowedCorsOrigin = (origin?: string): boolean => {
+  // Requests made by server-to-server clients, health checks, and same-origin
+  // navigation do not include an Origin header.
+  if (!origin) return true;
+  return allowedCorsOrigins.includes(origin);
+};
+
+if (env.NODE_ENV === 'production') {
+  const insecureSecrets = [
+    ['JWT_ACCESS_SECRET', env.JWT_ACCESS_SECRET],
+    ['JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET]
+  ].filter(([, value]) =>
+    value.length < 32 || value.includes('dev_jwt_') || value.includes('super_secure_')
+  );
+
+  if (insecureSecrets.length > 0) {
+    throw new Error(
+      `Production requires strong generated secrets for: ${insecureSecrets.map(([name]) => name).join(', ')}`
+    );
+  }
+}

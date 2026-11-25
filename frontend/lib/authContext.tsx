@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from './api';
+import { disconnectSocket } from './socket';
 
 export interface User {
   id: string;
@@ -66,7 +67,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  useEffect(() => {
+    const handleSessionExpiry = () => {
+      disconnectSocket();
+      setUser(null);
+      setCurrentOrgId(null);
+      setRole(null);
+      setMemberships([]);
+      router.replace('/login');
+    };
+
+    window.addEventListener('worksphere:session-expired', handleSessionExpiry);
+    return () => window.removeEventListener('worksphere:session-expired', handleSessionExpiry);
+  }, [router]);
+
   const login = (token: string, refreshToken: string, orgId: string, userRole: string, userData: User) => {
+    // A prior session may have left an authenticated socket alive. Tear it
+    // down before storing the replacement credentials.
+    disconnectSocket();
     localStorage.setItem('worksphere_token', token);
     localStorage.setItem('worksphere_refresh_token', refreshToken);
     localStorage.setItem('worksphere_org_id', orgId);
@@ -78,6 +96,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    // The API revokes the current user's refresh-token family. This remains a
+    // best-effort call so local sign-out is never blocked by a network error.
+    void apiClient('/auth/logout', { method: 'POST' }).catch(() => undefined);
+    disconnectSocket();
     localStorage.removeItem('worksphere_token');
     localStorage.removeItem('worksphere_refresh_token');
     localStorage.removeItem('worksphere_org_id');
@@ -93,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (mem) {
       localStorage.setItem('worksphere_org_id', orgId);
       localStorage.setItem('worksphere_role', mem.role);
+      disconnectSocket();
       setCurrentOrgId(orgId);
       setRole(mem.role);
       window.location.reload();

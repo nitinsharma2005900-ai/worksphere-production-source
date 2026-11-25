@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
+import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
@@ -37,8 +38,14 @@ const refreshSchema = z.object({
   })
 });
 
+interface IssuedTokens {
+  accessToken: string;
+  refreshToken: string;
+  refreshFamily: string;
+}
+
 // Helpers to issue tokens
-function generateTokens(user: DBUser, orgId?: string, role?: string) {
+function generateTokens(user: DBUser, orgId?: string, role?: string, refreshFamily = uuidv4()): IssuedTokens {
   const payload = {
     userId: user.id,
     email: user.email,
@@ -53,12 +60,67 @@ function generateTokens(user: DBUser, orgId?: string, role?: string) {
   });
 
   const refreshToken = jwt.sign(
-    { userId: user.id, family: uuidv4() },
+    {
+      userId: user.id,
+      family: refreshFamily,
+      // A refresh can happen within the same second as login. A unique JWT ID
+      // guarantees that rotation produces a distinct signed credential rather
+      // than recreating an otherwise identical token.
+      jti: uuidv4(),
+      currentOrgId: orgId,
+      role: role || (user.isPlatformAdmin ? 'PLATFORM_ADMIN' : 'TEAM_MEMBER')
+    },
     env.JWT_REFRESH_SECRET,
     { expiresIn: env.JWT_REFRESH_EXPIRATION as any }
   );
 
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, refreshFamily };
+}
+
+async function persistRefreshToken(userId: string, issued: IssuedTokens): Promise<void> {
+  const decoded = jwt.decode(issued.refreshToken) as jwt.JwtPayload | null;
+  if (typeof decoded?.jti !== 'string') {
+    throw new Error('Unable to persist refresh token without a JWT ID');
+  }
+  const recordId = uuidv4();
+  const now = new Date().toISOString();
+
+  store.refreshTokens.set(recordId, {
+    id: recordId,
+    userId,
+    tokenHash: createHash('sha256').update(issued.refreshToken).digest('hex'),
+    tokenId: decoded.jti,
+    family: issued.refreshFamily,
+    expiresAt: decoded?.exp
+      ? new Date(decoded.exp * 1000).toISOString()
+      : new Date(Date.now() + 7 * 86400000).toISOString(),
+    createdAt: now
+  });
+}
+
+async function findActiveRefreshToken(
+  userId: string,
+  tokenId: string,
+  token: string
+): Promise<DBRefreshToken | undefined> {
+  const now = Date.now();
+
+  for (const record of store.refreshTokens.values()) {
+    if (
+      record.userId !== userId ||
+      record.tokenId !== tokenId ||
+      record.revokedAt ||
+      new Date(record.expiresAt).getTime() <= now
+    ) {
+      continue;
+    }
+
+    if (createHash('sha256').update(token).digest('hex') === record.tokenHash) {
+      return record;
+    }
+  }
+
+  return undefined;
 }
 
 // 1. POST /api/v1/auth/register
@@ -157,18 +219,8 @@ router.post('/register', authRateLimiter, validate(registerSchema), async (req: 
       createdAt: now
     });
 
-    const { accessToken, refreshToken } = generateTokens(newUser, orgId, userRole);
-
-    // Save refresh token
-    const tokenHash = await bcrypt.hash(refreshToken, 10);
-    store.refreshTokens.set(uuidv4(), {
-      id: uuidv4(),
-      userId,
-      tokenHash,
-      family: uuidv4(),
-      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
-      createdAt: now
-    });
+    const issued = generateTokens(newUser, orgId, userRole);
+    await persistRefreshToken(userId, issued);
 
     return res.status(201).json({
       success: true,
@@ -176,8 +228,8 @@ router.post('/register', authRateLimiter, validate(registerSchema), async (req: 
         user: { id: newUser.id, email: newUser.email, name: newUser.name, isPlatformAdmin: newUser.isPlatformAdmin },
         organizationId: orgId,
         role: userRole,
-        accessToken,
-        refreshToken
+        accessToken: issued.accessToken,
+        refreshToken: issued.refreshToken
       },
       requestId: req.id
     });
@@ -223,8 +275,9 @@ router.post('/login', authRateLimiter, validate(loginSchema), async (req: Reques
       targetRole = matched.role;
     }
 
-    const { accessToken, refreshToken } = generateTokens(user, targetOrgId, targetRole);
+    const issued = generateTokens(user, targetOrgId, targetRole);
     const now = new Date().toISOString();
+    await persistRefreshToken(user.id, issued);
 
     // Audit log
     const auditId = uuidv4();
@@ -247,8 +300,8 @@ router.post('/login', authRateLimiter, validate(loginSchema), async (req: Reques
         user: { id: user.id, email: user.email, name: user.name, isPlatformAdmin: user.isPlatformAdmin },
         organizationId: targetOrgId,
         role: targetRole,
-        accessToken,
-        refreshToken
+        accessToken: issued.accessToken,
+        refreshToken: issued.refreshToken
       },
       requestId: req.id
     });
@@ -261,11 +314,24 @@ router.post('/login', authRateLimiter, validate(loginSchema), async (req: Reques
 router.post('/refresh', validate(refreshSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { refreshToken } = req.body;
-    let decoded: any;
+    let decoded: jwt.JwtPayload;
     try {
-      decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET);
+      decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as jwt.JwtPayload;
     } catch (e) {
       throw new UnauthorizedError('Invalid or expired refresh token');
+    }
+
+    if (
+      typeof decoded.userId !== 'string' ||
+      typeof decoded.family !== 'string' ||
+      typeof decoded.jti !== 'string'
+    ) {
+      throw new UnauthorizedError('Invalid refresh token payload');
+    }
+
+    const activeRefreshToken = await findActiveRefreshToken(decoded.userId, decoded.jti, refreshToken);
+    if (!activeRefreshToken || activeRefreshToken.revokedAt) {
+      throw new UnauthorizedError('Refresh token has been revoked, rotated, or is no longer valid');
     }
 
     const user = store.users.get(decoded.userId);
@@ -274,10 +340,19 @@ router.post('/refresh', validate(refreshSchema), async (req: Request, res: Respo
     }
 
     const memberships = Array.from(store.memberships.values()).filter(m => m.userId === user.id && m.status === 'ACTIVE');
-    const orgId = memberships[0]?.organizationId;
-    const role = user.isPlatformAdmin ? 'PLATFORM_ADMIN' : memberships[0]?.role || 'TEAM_MEMBER';
+    const requestedOrgId = typeof decoded.currentOrgId === 'string' ? decoded.currentOrgId : undefined;
+    const membership = memberships.find(item => item.organizationId === requestedOrgId) || memberships[0];
+    const orgId = user.isPlatformAdmin ? requestedOrgId || membership?.organizationId : membership?.organizationId;
+    const role = user.isPlatformAdmin ? 'PLATFORM_ADMIN' : membership?.role || 'TEAM_MEMBER';
 
-    const tokens = generateTokens(user, orgId, role);
+    // Rotation is transactional at the in-memory-store level: the presented
+    // token is revoked before its replacement is recorded. Replaying it now
+    // fails, while the replacement keeps the same family for auditability.
+    activeRefreshToken.revokedAt = new Date().toISOString();
+    store.refreshTokens.set(activeRefreshToken.id, activeRefreshToken);
+
+    const tokens = generateTokens(user, orgId, role, decoded.family);
+    await persistRefreshToken(user.id, tokens);
     return res.status(200).json({
       success: true,
       data: {
@@ -293,6 +368,17 @@ router.post('/refresh', validate(refreshSchema), async (req: Request, res: Respo
 
 // 4. POST /api/v1/auth/logout
 router.post('/logout', authenticateJwt, async (req: Request, res: Response) => {
+  // Access JWTs are short lived. Revoking all active refresh tokens for this
+  // user prevents a logged-out session from silently obtaining a new access
+  // token and provides a safe global sign-out for this demo implementation.
+  const now = new Date().toISOString();
+  for (const record of store.refreshTokens.values()) {
+    if (record.userId === req.user!.userId && !record.revokedAt) {
+      record.revokedAt = now;
+      store.refreshTokens.set(record.id, record);
+    }
+  }
+
   // Mark audit
   if (req.user) {
     const auditId = uuidv4();

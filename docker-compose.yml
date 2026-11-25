@@ -16,9 +16,9 @@ services:
     container_name: worksphere-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: worksphere
-      POSTGRES_PASSWORD: worksphere_password
-      POSTGRES_DB: worksphere_db
+      POSTGRES_USER: ${POSTGRES_USER:-worksphere}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in an untracked environment file}
+      POSTGRES_DB: ${POSTGRES_DB:-worksphere_db}
     ports:
       - "5432:5432"
     volumes:
@@ -54,8 +54,8 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in an untracked environment file}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in an untracked environment file}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -78,7 +78,8 @@ services:
     environment:
       ENVIRONMENT: production
       PORT: 8000
-      INTERNAL_API_KEY: ws_internal_sec_analytics_dev_key_2026
+      INTERNAL_API_KEY: ${ANALYTICS_INTERNAL_API_KEY:?Set ANALYTICS_INTERNAL_API_KEY in an untracked environment file}
+      CORS_ORIGINS: ${CORS_ORIGIN:-http://localhost:3000}
     ports:
       - "8000:8000"
     networks:
@@ -106,14 +107,15 @@ services:
       NODE_ENV: production
       PORT: 4000
       API_BASE_URL: http://backend:4000/api/v1
-      DATABASE_URL: postgresql://worksphere:worksphere_password@postgres:5432/worksphere_db?schema=public
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-worksphere}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in an untracked environment file}@postgres:5432/${POSTGRES_DB:-worksphere_db}?schema=public"
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_URL: redis://redis:6379
-      JWT_ACCESS_SECRET: prod_super_secret_jwt_access_key_worksphere_2026
-      JWT_REFRESH_SECRET: prod_super_secret_jwt_refresh_key_worksphere_2026
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET in an untracked environment file}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in an untracked environment file}
       ANALYTICS_SERVICE_URL: http://analytics-service:8000
-      ANALYTICS_INTERNAL_API_KEY: ws_internal_sec_analytics_dev_key_2026
+      ANALYTICS_INTERNAL_API_KEY: ${ANALYTICS_INTERNAL_API_KEY:?Set ANALYTICS_INTERNAL_API_KEY in an untracked environment file}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       STORAGE_MODE: local
       EMAIL_PROVIDER: mock
     ports:

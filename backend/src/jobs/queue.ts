@@ -140,7 +140,7 @@ class WorkSphereQueueService {
 
           // Emit real-time notification
           if (ioServer) {
-            ioServer.to(`org:${organizationId}`).emit('notification:new', notif);
+            ioServer.to(`org:${organizationId}:user:${payload.userId}`).emit('notification:new', notif);
           }
           result = { notificationId: notifId };
           break;

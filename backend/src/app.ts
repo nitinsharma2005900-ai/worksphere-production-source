@@ -2,7 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
-import { env } from './config/env';
+import { env, isAllowedCorsOrigin } from './config/env';
 import { requestIdMiddleware } from './middleware/requestId';
 import { apiRateLimiter } from './middleware/rateLimiter';
 import { errorHandler, NotFoundError } from './middleware/errorHandler';
@@ -29,10 +29,16 @@ import swaggerDoc from './docs/swagger.json';
 
 export const createApp = () => {
   const app = express();
+  if (env.NODE_ENV === 'production') app.set('trust proxy', 1);
 
   // Security & utility middleware
   app.use(helmet({ contentSecurityPolicy: false }));
-  app.use(cors({ origin: '*', credentials: true }));
+  app.use(cors({
+    origin: (origin, callback) => callback(null, isAllowedCorsOrigin(origin)),
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Organization-ID', 'X-Request-ID']
+  }));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(requestIdMiddleware);
@@ -54,8 +60,9 @@ export const createApp = () => {
   app.get('/ready', (_req, res) => {
     res.json({
       status: 'ready',
-      database: 'connected',
-      redis: 'ready'
+      database: 'in-memory-demo',
+      persistence: 'volatile',
+      productionReady: false
     });
   });
 

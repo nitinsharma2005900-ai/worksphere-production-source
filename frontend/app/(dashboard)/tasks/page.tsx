@@ -22,7 +22,7 @@ interface Task {
   projectId: string;
   title: string;
   description?: string;
-  status: 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE' | 'BLOCKED';
+  status: 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE' | 'BLOCKED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   dueDate?: string;
   estimatedHours?: number;
@@ -34,6 +34,7 @@ interface Task {
 }
 
 const COLUMNS: Array<{ id: Task['status']; title: string; color: string }> = [
+  { id: 'BACKLOG', title: 'Backlog', color: 'border-slate-300' },
   { id: 'TODO', title: 'To Do', color: 'border-slate-300' },
   { id: 'IN_PROGRESS', title: 'In Progress', color: 'border-sky-400' },
   { id: 'IN_REVIEW', title: 'In Review', color: 'border-purple-400' },
@@ -84,6 +85,7 @@ export default function TasksPage() {
     if (!socket) return;
 
     socket.on('task:created', (newTask: Task) => {
+      if (selectedProject && newTask.projectId !== selectedProject) return;
       setTasks(prev => [newTask, ...prev.filter(t => t.id !== newTask.id)]);
     });
 
@@ -100,7 +102,7 @@ export default function TasksPage() {
       socket.off('task:updated');
       socket.off('task:conflict');
     };
-  }, []);
+  }, [currentOrgId, selectedProject]);
 
   // Move task status with optimistic locking
   const handleStatusChange = async (task: Task, nextStatus: Task['status']) => {
@@ -142,7 +144,9 @@ export default function TasksPage() {
         })
       });
 
-      setTasks(prev => [created, ...prev]);
+      if (!selectedProject || created.projectId === selectedProject) {
+        setTasks(prev => [created, ...prev.filter(task => task.id !== created.id)]);
+      }
       setShowModal(false);
       setNewTitle('');
     } catch (err: any) {

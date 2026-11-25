@@ -39,7 +39,9 @@ const updateTaskSchema = z.object({
     actualHours: z.number().nonnegative().nullable().optional(),
     assigneeId: z.string().nullable().optional(),
     milestoneId: z.string().nullable().optional(),
-    version: z.number().int().positive().optional() // OPTIMISTIC CONCURRENCY LOCK KEY
+    // A task write without the version observed by the client can silently
+    // overwrite a concurrent change, so it is deliberately required.
+    version: z.number().int().positive() // OPTIMISTIC CONCURRENCY LOCK KEY
   })
 });
 

@@ -1,11 +1,13 @@
 # WorkSphere – Multi-Tenant Project Management & Workflow Automation Platform
 
 [![CI Pipeline](https://github.com/worksphere/worksphere/actions/workflows/ci.yml/badge.svg)](https://github.com/worksphere/worksphere/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-23%20Passed%20(100%25)-success)](docs/TESTING_GUIDE.md)
+[![Tests](https://img.shields.io/badge/Tests-34%20Passed-success)](docs/TESTING_GUIDE.md)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Assessment%20Status-15%2F15%20Completed-brightgreen)](docs/ASSESSMENT_TRACKER.md)
+[![Status](https://img.shields.io/badge/Deployment-Demo%20preview-yellow)](docs/KNOWN_LIMITATIONS.md)
 
-**WorkSphere** is an enterprise-grade SaaS project management platform featuring **strict multi-tenant database isolation**, **real-time interactive task boards**, **optimistic concurrency control** (detecting stale updates with HTTP 409 Conflict), **Python FastAPI workload analytics**, and **resilient BullMQ background job queues**.
+**WorkSphere** is a learning-project SaaS demo featuring tenant-scoped API checks, real-time interactive task boards, optimistic concurrency control (HTTP 409 for stale task updates), Python FastAPI workload analytics, and a BullMQ-compatible job queue.
+
+> **Deployment status:** the current Render configuration deploys a functional demo. The Node API uses an in-memory runtime store, so application data and queue idempotency records are lost after a restart. It must not be presented as a durable production deployment until the route repositories are migrated to PostgreSQL. See [Known Limitations](docs/KNOWN_LIMITATIONS.md) and [Deployment Guide](docs/DEPLOYMENT_GUIDE.md).
 
 ---
 
@@ -95,7 +97,7 @@ All accounts share the password: `Password123!`
 
 ## 🧪 Automated Test Execution
 
-### 1. Run Node.js Backend Tests (11 Tests)
+### 1. Run Node.js Backend Tests (22 Tests)
 ```bash
 cd backend
 npm test

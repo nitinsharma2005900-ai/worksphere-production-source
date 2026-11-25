@@ -39,6 +39,37 @@ describe('Assessment 04 - Authentication & Authorization', () => {
     expect(res.body.error.code).toBe('UNAUTHORIZED');
   });
 
+  it('rotates refresh tokens and revokes them on logout', async () => {
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'owner@acme.com', password: 'Password123!' });
+
+    const firstRefreshToken = login.body.data.refreshToken;
+    const firstRotation = await request(app)
+      .post('/api/v1/auth/refresh')
+      .send({ refreshToken: firstRefreshToken });
+
+    expect(firstRotation.status).toBe(200);
+    expect(firstRotation.body.data.refreshToken).not.toBe(firstRefreshToken);
+
+    const replay = await request(app)
+      .post('/api/v1/auth/refresh')
+      .send({ refreshToken: firstRefreshToken });
+
+    expect(replay.status).toBe(401);
+    expect(replay.body.error.code).toBe('UNAUTHORIZED');
+
+    const logout = await request(app)
+      .post('/api/v1/auth/logout')
+      .set('Authorization', `Bearer ${firstRotation.body.data.accessToken}`);
+    expect(logout.status).toBe(200);
+
+    const afterLogout = await request(app)
+      .post('/api/v1/auth/refresh')
+      .send({ refreshToken: firstRotation.body.data.refreshToken });
+    expect(afterLogout.status).toBe(401);
+  });
+
   it('returns an API error for a valid token whose in-memory user no longer exists', async () => {
     const login = await request(app)
       .post('/api/v1/auth/login')

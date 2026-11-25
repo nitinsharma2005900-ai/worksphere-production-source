@@ -352,6 +352,3 @@ export async function seedDatabase() {
     tasks: store.tasks.size
   }, '✅ Seed fixture data successfully loaded into store');
 }
-
-// Auto-seed on load
-seedDatabase();

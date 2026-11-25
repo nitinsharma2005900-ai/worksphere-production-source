@@ -14,6 +14,7 @@ export class AnalyticsClient {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method: 'POST',
+        signal: AbortSignal.timeout(15000),
         headers: {
           'Content-Type': 'application/json',
           'X-Internal-Key': this.apiKey

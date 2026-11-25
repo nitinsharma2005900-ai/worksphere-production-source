@@ -34,6 +34,13 @@ router.post(
       const taskId = req.body.taskId as string | undefined;
       const projectId = req.body.projectId as string | undefined;
 
+      if (taskId && store.tasks.get(taskId)?.organizationId !== orgId) {
+        throw new NotFoundError('Task not found in this organization');
+      }
+      if (projectId && store.projects.get(projectId)?.organizationId !== orgId) {
+        throw new NotFoundError('Project not found in this organization');
+      }
+
       const { storageKey, storageUrl } = await storageService.uploadFile({
         buffer: file.buffer,
         fileName: file.originalname,
@@ -65,14 +72,18 @@ router.post(
 );
 
 // GET /api/v1/attachments/download/:key(*)
-router.get('/download/:key(*)', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/download/:key(*)', authenticateJwt, requireTenant, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const key = req.params.key;
+    const attachment = Array.from(store.attachments.values()).find(
+      item => item.storageKey === key && item.organizationId === req.organizationId
+    );
+    if (!attachment) throw new NotFoundError('Attachment not found in this organization');
     const baseDir = path.resolve(process.cwd(), 'uploads');
     const filePath = path.join(baseDir, key);
 
     // Prevent directory traversal attacks
-    if (!filePath.startsWith(baseDir)) {
+    if (!filePath.startsWith(baseDir + path.sep)) {
       return res.status(403).json({ success: false, error: { message: 'Access denied' } });
     }
 
@@ -80,7 +91,7 @@ router.get('/download/:key(*)', async (req: Request, res: Response, next: NextFu
       throw new NotFoundError('File not found');
     }
 
-    return res.sendFile(filePath);
+    return res.download(filePath, attachment.fileName);
   } catch (err) {
     next(err);
   }
