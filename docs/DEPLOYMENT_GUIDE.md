@@ -3,6 +3,12 @@
 ## 1. Cloud Architecture Overview
 WorkSphere is designed for deployment to any modern cloud infrastructure (AWS EC2, DigitalOcean Droplet, GCP Compute Engine, or Azure Linux VM) behind an Nginx reverse proxy with TLS/HTTPS.
 
+## Render Demo Deployment
+
+The repository includes a `render.yaml` Blueprint for the frontend, backend, and analytics service. To deploy the demo, connect the private GitHub repository to Render and create a Blueprint from `render.yaml`. The Blueprint generates JWT and analytics service secrets; do not replace them with committed values.
+
+The current backend stores application data in process memory. Seeded demo accounts load on startup, but projects and other changes made after startup can be lost when a free Render service sleeps or restarts. This setup is for preview/demo use only, not durable production data. PostgreSQL is not yet wired into the runtime data store.
+
 ---
 
 ## 2. Infrastructure Deployment Steps
